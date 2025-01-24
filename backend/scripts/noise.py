@@ -8,8 +8,8 @@ def add_noise(image, noise_type, intensity):
     
     Args:
         image: numpy array of the image
-        noise_type: 'salt-pepper' or 'gaussian'
-        intensity: float for noise intensity/std_dev
+        noise_type: 'salt-pepper', 'gaussian', or 'scratch'
+        intensity: float for noise intensity/std_dev/num_scratches
     """
     if noise_type == "salt-pepper":
         # Add salt and pepper noise
@@ -30,8 +30,34 @@ def add_noise(image, noise_type, intensity):
         noisy_img = float_img + noise
         # Clip values to valid range and convert back to uint8
         return np.clip(noisy_img, 0, 255).astype(np.uint8)
+        
+    elif noise_type == "scratch":
+        # Add random scratches
+        noise_img = image.copy()
+        num_scratches = int(intensity)  # Use intensity directly as number of scratches
+        height, width = image.shape
+        rng = np.random.default_rng()
+        
+        for _ in range(num_scratches):
+            # Random start and end points for scratch
+            start_x = rng.integers(0, width)
+            start_y = rng.integers(0, height)
+            end_x = rng.integers(0, width)
+            end_y = rng.integers(0, height)
+            
+            # Random thickness (1-3 pixels)
+            thickness = rng.integers(1, 4)
+            
+            # Draw white scratch line
+            cv2.line(noise_img, 
+                    (start_x, start_y), 
+                    (end_x, end_y), 
+                    255,  # White color
+                    thickness)
+        
+        return noise_img
     else:
-        raise ValueError("Invalid noise type. Must be 'salt-pepper' or 'gaussian'")
+        raise ValueError("Invalid noise type. Must be 'salt-pepper', 'gaussian', or 'scratch'")
 
 def main():
     print("\nNoise Addition Tool")
@@ -58,15 +84,18 @@ def main():
         print("\nSelect noise type:")
         print("1. Salt & Pepper")
         print("2. Gaussian")
-        noise_choice = input("Choice (1/2): ").strip()
+        print("3. Scratch")
+        noise_choice = input("Choice (1/2/3): ").strip()
         
-        noise_type = "salt-pepper" if noise_choice == "1" else "gaussian"
+        noise_type = "salt-pepper" if noise_choice == "1" else "gaussian" if noise_choice == "2" else "scratch"
         
         # Get intensity
         if noise_type == "salt-pepper":
             intensity = float(input("Enter noise density (0-1): ").strip())
-        else:
+        elif noise_type == "gaussian":
             intensity = float(input("Enter standard deviation (1-50): ").strip())
+        else:
+            intensity = float(input("Enter number of scratches (0-10): ").strip())
 
         # Process image
         try:

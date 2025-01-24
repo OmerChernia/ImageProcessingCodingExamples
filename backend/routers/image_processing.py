@@ -19,6 +19,7 @@ from scripts.Transformations import (
     apply_transformation
 )
 from scripts.noise import add_noise  # Add this import at the top with other imports
+from scripts.filters import apply_min_filter, apply_max_filter  # Add this import
 
 router = APIRouter()
 
@@ -466,6 +467,63 @@ async def process_noise(
             "originalCumulative": cum_original.tolist(),
             "processedHistogram": hist_processed.tolist(),
             "processedCumulative": cum_processed.tolist()
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/apply-filter")
+async def process_filter(
+    image: UploadFile = File(...),
+    filter_sequence: str = Form(...)  # Will receive something like "min,max,min"
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Process the filter sequence
+        processed = img.copy()
+        filter_list = filter_sequence.split(',')
+        
+        for filter_type in filter_list:
+            if filter_type == 'min':
+                processed = apply_min_filter(processed)
+            elif filter_type == 'max':
+                processed = apply_max_filter(processed)
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for processed image
+        hist_processed = cv2.calcHist([processed], [0], None, [256], [0, 256]).flatten()
+        hist_processed_norm = hist_processed / hist_processed.sum()
+        cum_processed = hist_processed_norm.cumsum() * hist_processed.max()
+        
+        # Encode processed image to base64
+        _, processed_img = cv2.imencode('.png', processed)
+        processed_base64 = base64.b64encode(processed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{processed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "processedHistogram": hist_processed.tolist(),
+            "processedCumulative": cum_processed.tolist(),
+            "appliedFilters": filter_list
         })
         
     except Exception as e:

@@ -16,30 +16,25 @@ A web-based application for performing various image processing operations using
 
 ## Project Structure
 
-📦 image-processing-web-app
-├── 📂 frontend
-│ ├── 📂 components
-│ │ ├── HistogramChart.jsx # Histogram visualization
-│ │ ├── ImageUploader.jsx # Image upload handling
-│ │ ├── ImageViewer.jsx # Image display
-│ │ ├── MappingPlot.js # Intensity mapping
-│ │ └── Sliders.jsx # Interactive controls
-│ ├── 📂 pages
-│ │ ├── app.js # Next.js config
-│ │ ├── index.js # Home page
-│ │ ├── 2pointer.js # Two-pointer algorithm
-│ │ ├── brightness.js # Brightness adjustment
-│ │ ├── contrast.js # Contrast stretching
-│ │ ├── gamma.js # Gamma correction
-│ │ ├── histogram.js # Histogram equalization
-│ │ ├── scripts.js # Backend scripts
-│ │ └── transformations.js # Image transformations
-│ └── 📂 styles
-│ └── globals.css # Global styles
-└── 📂 backend
-├── 📂 routers
-├── 📂 scripts
-└── main.py
+frontend:
+├── components:
+│ ├── HistogramChart.jsx # Histogram visualization component
+│ ├── ImageUploader.jsx # Image upload handling
+│ ├── ImageViewer.jsx # Image display component
+│ ├── MappingPlot.js # Intensity mapping visualization
+│ └── Sliders.jsx # Interactive slider controls
+├── pages:
+│ ├── app.js # Next.js app configuration
+│ ├── index.js # Home page with tool navigation
+│ ├── 2pointer.js # Two-pointer algorithm implementation
+│ ├── brightness.js # Brightness adjustment page
+│ ├── contrast.js # Contrast stretching page
+│ ├── gamma.js # Gamma correction page
+│ ├── histogram.js # Histogram equalization page
+│ ├── scripts.js # Backend script execution
+│ └── transformations.js # Image transformation page
+└── styles:
+└── globals.css # Global styles and Tailwind CSS
 
 ## Prerequisites
 

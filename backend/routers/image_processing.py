@@ -21,6 +21,7 @@ from scripts.Transformations import (
 from scripts.noise import add_noise  # Add this import at the top with other imports
 from scripts.filters import apply_min_filter, apply_max_filter  # Add this import
 from scripts.median_filter import apply_median_filter  # Add this import
+from scripts.mean_filter import apply_mean_filter  # Add this import
 
 router = APIRouter()
 
@@ -557,6 +558,60 @@ async def process_median_filter(
 
         # Apply median filter
         processed = apply_median_filter(img, kernel_size)
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for processed image
+        hist_processed = cv2.calcHist([processed], [0], None, [256], [0, 256]).flatten()
+        hist_processed_norm = hist_processed / hist_processed.sum()
+        cum_processed = hist_processed_norm.cumsum() * hist_processed.max()
+        
+        # Encode processed image to base64
+        _, processed_img = cv2.imencode('.png', processed)
+        processed_base64 = base64.b64encode(processed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{processed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "processedHistogram": hist_processed.tolist(),
+            "processedCumulative": cum_processed.tolist(),
+            "kernelSize": kernel_size
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/mean-filter")
+async def process_mean_filter(
+    image: UploadFile = File(...),
+    kernel_size: int = Form(...)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Ensure kernel size is odd
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+
+        # Apply mean filter
+        processed = apply_mean_filter(img, kernel_size)
         
         # Compute histograms for original image
         hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()

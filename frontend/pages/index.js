@@ -7,6 +7,7 @@ export default function Home() {
     { name: 'Contrast Stretching', href: '/contrast' },
     { name: 'Gamma Correction', href: '/gamma' },
     { name: 'Histogram Equalization', href: '/histogram' },
+    { name: 'Add Noise', href: '/noise' },
     { name: 'Transformations', href: '/transformations' },
   ];
 

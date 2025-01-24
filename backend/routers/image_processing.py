@@ -18,6 +18,7 @@ from scripts.Transformations import (
     get_shear_matrix,
     apply_transformation
 )
+from scripts.noise import add_noise  # Add this import at the top with other imports
 
 router = APIRouter()
 
@@ -417,6 +418,56 @@ async def transform_image(
             "transformationMatrix": matrix.tolist()
         })
 
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/add-noise")
+async def process_noise(
+    image: UploadFile = File(...),
+    noise_type: str = Form(...),
+    intensity: float = Form(...),
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Apply noise
+        noise_img = add_noise(img, noise_type, float(intensity))
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for processed image
+        hist_processed = cv2.calcHist([noise_img], [0], None, [256], [0, 256]).flatten()
+        hist_processed_norm = hist_processed / hist_processed.sum()
+        cum_processed = hist_processed_norm.cumsum() * hist_processed.max()
+        
+        # Encode processed image to base64
+        _, processed_img = cv2.imencode('.png', noise_img)
+        processed_base64 = base64.b64encode(processed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{processed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "processedHistogram": hist_processed.tolist(),
+            "processedCumulative": cum_processed.tolist()
+        })
+        
     except Exception as e:
         print(f"Error processing image: {str(e)}")
         return JSONResponse(

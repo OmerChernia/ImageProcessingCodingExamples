@@ -735,4 +735,55 @@ async def get_mask(type: str, size: int):
             content={"error": f"Failed to get mask: {str(e)}"}
         )
 
+@router.post("/bilateral")
+async def process_bilateral(
+    image: UploadFile = File(...),
+    d: int = Form(...),
+    sigma_color: float = Form(...),
+    sigma_space: float = Form(...)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Apply bilateral filter
+        filtered = cv2.bilateralFilter(img, d, sigma_color, sigma_space)
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for processed image
+        hist_processed = cv2.calcHist([filtered], [0], None, [256], [0, 256]).flatten()
+        hist_processed_norm = hist_processed / hist_processed.sum()
+        cum_processed = hist_processed_norm.cumsum() * hist_processed.max()
+        
+        # Encode processed image to base64
+        _, processed_img = cv2.imencode('.png', filtered)
+        processed_base64 = base64.b64encode(processed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{processed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "processedHistogram": hist_processed.tolist(),
+            "processedCumulative": cum_processed.tolist()
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
 # Add similar endpoints for other operations...

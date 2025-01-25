@@ -25,6 +25,7 @@ from scripts.mean_filter import apply_mean_filter  # Add this import
 from scripts.convolution_masks import get_default_mask, apply_convolution  # Add this import
 import json
 from scripts.fourier_transform import apply_fourier_transform
+from scripts.fourier_filters import apply_fourier_filter  # Add this import at the top
 
 router = APIRouter()
 
@@ -790,8 +791,8 @@ async def process_bilateral(
 @router.post("/fourier")
 async def process_fourier(
     image: UploadFile = File(...),
-    center_spectrum: bool = Form(...),
-    apply_log: bool = Form(...)
+    center_spectrum: bool = Form(False),
+    apply_log: bool = Form(False)
 ):
     try:
         # Read image
@@ -822,18 +823,68 @@ async def process_fourier(
         
         # Encode images to base64
         _, magnitude_img = cv2.imencode('.png', magnitude_spectrum)
-        _, reconstructed_img = cv2.imencode('.png', reconstructed)
-        
         magnitude_base64 = base64.b64encode(magnitude_img.tobytes()).decode('utf-8')
-        reconstructed_base64 = base64.b64encode(reconstructed_img.tobytes()).decode('utf-8')
         
         return JSONResponse({
             "magnitudeSpectrum": f"data:image/png;base64,{magnitude_base64}",
-            "reconstructedImage": f"data:image/png;base64,{reconstructed_base64}",
             "originalHistogram": hist_original.tolist(),
             "originalCumulative": cum_original.tolist(),
-            "spectrumHistogram": hist_spectrum.tolist(),
+            "spectrumHistogram": hist_spectrum_norm.tolist(),
             "spectrumCumulative": cum_spectrum.tolist()
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/fourier-filter")
+async def process_fourier_filter(
+    image: UploadFile = File(...),
+    filter_type: str = Form(...),
+    gaussian: bool = Form(...),
+    radius: int = Form(None),
+    inner_radius: int = Form(None),
+    outer_radius: int = Form(None)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Prepare parameters
+        params = {'gaussian': gaussian}
+        if filter_type == 'band_pass':
+            params.update({
+                'inner_radius': inner_radius,
+                'outer_radius': outer_radius
+            })
+        else:
+            params['radius'] = radius
+
+        # Apply filter
+        filtered_img, original_spectrum, filtered_spectrum = apply_fourier_filter(
+            img, filter_type, params
+        )
+        
+        # Encode images to base64
+        _, filtered_buf = cv2.imencode('.png', filtered_img)
+        _, orig_spectrum_buf = cv2.imencode('.png', original_spectrum)
+        _, filtered_spectrum_buf = cv2.imencode('.png', filtered_spectrum)
+        
+        return JSONResponse({
+            "filteredImage": f"data:image/png;base64,{base64.b64encode(filtered_buf).decode('utf-8')}",
+            "originalSpectrum": f"data:image/png;base64,{base64.b64encode(orig_spectrum_buf).decode('utf-8')}",
+            "filteredSpectrum": f"data:image/png;base64,{base64.b64encode(filtered_spectrum_buf).decode('utf-8')}"
         })
         
     except Exception as e:

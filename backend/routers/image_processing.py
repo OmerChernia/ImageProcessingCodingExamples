@@ -22,6 +22,8 @@ from scripts.noise import add_noise  # Add this import at the top with other imp
 from scripts.filters import apply_min_filter, apply_max_filter  # Add this import
 from scripts.median_filter import apply_median_filter  # Add this import
 from scripts.mean_filter import apply_mean_filter  # Add this import
+from scripts.convolution_masks import get_default_mask, apply_convolution  # Add this import
+import json
 
 router = APIRouter()
 
@@ -641,6 +643,96 @@ async def process_mean_filter(
         return JSONResponse(
             status_code=500,
             content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/convolution")
+async def process_convolution(
+    image: UploadFile = File(...),
+    kernel_size: int = Form(...),
+    mask_type: str = Form(...),
+    custom_mask: str = Form(None),
+    add_128: bool = Form(False)  # Add this parameter
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Ensure kernel size is odd
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+
+        # Create mask
+        if custom_mask:
+            try:
+                # Parse custom mask JSON string to numpy array
+                mask_data = json.loads(custom_mask)
+                mask = np.array(mask_data, dtype=np.float32)
+                
+                # Verify mask dimensions
+                if mask.shape != (kernel_size, kernel_size):
+                    raise ValueError(f"Mask dimensions must be {kernel_size}x{kernel_size}")
+                
+            except Exception as e:
+                print(f"Error parsing custom mask: {str(e)}")  # Debug log
+                return JSONResponse(
+                    status_code=400,
+                    content={"error": f"Invalid custom mask: {str(e)}"}
+                )
+        else:
+            mask = get_default_mask(mask_type, kernel_size)
+
+        # Apply convolution with add_128 parameter
+        processed = apply_convolution(img, mask, add_128=add_128)
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for processed image
+        hist_processed = cv2.calcHist([processed], [0], None, [256], [0, 256]).flatten()
+        hist_processed_norm = hist_processed / hist_processed.sum()
+        cum_processed = hist_processed_norm.cumsum() * hist_processed.max()
+        
+        # Encode processed image to base64
+        _, processed_img = cv2.imencode('.png', processed)
+        processed_base64 = base64.b64encode(processed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{processed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "processedHistogram": hist_processed.tolist(),
+            "processedCumulative": cum_processed.tolist(),
+            "mask": mask.tolist()
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.get("/get-mask")
+async def get_mask(type: str, size: int):
+    try:
+        mask = get_default_mask(type, int(size))
+        return JSONResponse({
+            "mask": mask.tolist()
+        })
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to get mask: {str(e)}"}
         )
 
 # Add similar endpoints for other operations...

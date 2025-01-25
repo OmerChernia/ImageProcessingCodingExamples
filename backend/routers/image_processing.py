@@ -24,6 +24,7 @@ from scripts.median_filter import apply_median_filter  # Add this import
 from scripts.mean_filter import apply_mean_filter  # Add this import
 from scripts.convolution_masks import get_default_mask, apply_convolution  # Add this import
 import json
+from scripts.fourier_transform import apply_fourier_transform
 
 router = APIRouter()
 
@@ -777,6 +778,62 @@ async def process_bilateral(
             "originalCumulative": cum_original.tolist(),
             "processedHistogram": hist_processed.tolist(),
             "processedCumulative": cum_processed.tolist()
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/fourier")
+async def process_fourier(
+    image: UploadFile = File(...),
+    center_spectrum: bool = Form(...),
+    apply_log: bool = Form(...)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Apply Fourier transform
+        magnitude_spectrum, reconstructed = apply_fourier_transform(
+            img, center_spectrum, apply_log
+        )
+        
+        # Compute histograms for original image
+        hist_original = cv2.calcHist([img], [0], None, [256], [0, 256]).flatten()
+        hist_original_norm = hist_original / hist_original.sum()
+        cum_original = hist_original_norm.cumsum() * hist_original.max()
+        
+        # Compute histograms for magnitude spectrum
+        hist_spectrum = cv2.calcHist([magnitude_spectrum], [0], None, [256], [0, 256]).flatten()
+        hist_spectrum_norm = hist_spectrum / hist_spectrum.sum()
+        cum_spectrum = hist_spectrum_norm.cumsum() * hist_spectrum.max()
+        
+        # Encode images to base64
+        _, magnitude_img = cv2.imencode('.png', magnitude_spectrum)
+        _, reconstructed_img = cv2.imencode('.png', reconstructed)
+        
+        magnitude_base64 = base64.b64encode(magnitude_img.tobytes()).decode('utf-8')
+        reconstructed_base64 = base64.b64encode(reconstructed_img.tobytes()).decode('utf-8')
+        
+        return JSONResponse({
+            "magnitudeSpectrum": f"data:image/png;base64,{magnitude_base64}",
+            "reconstructedImage": f"data:image/png;base64,{reconstructed_base64}",
+            "originalHistogram": hist_original.tolist(),
+            "originalCumulative": cum_original.tolist(),
+            "spectrumHistogram": hist_spectrum.tolist(),
+            "spectrumCumulative": cum_spectrum.tolist()
         })
         
     except Exception as e:

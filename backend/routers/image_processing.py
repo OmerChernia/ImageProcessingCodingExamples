@@ -26,6 +26,7 @@ from scripts.convolution_masks import get_default_mask, apply_convolution  # Add
 import json
 from scripts.fourier_transform import apply_fourier_transform
 from scripts.fourier_filters import apply_fourier_filter  # Add this import at the top
+from scripts.pyramids import build_gaussian_pyramid, build_laplacian_pyramid, reconstruct_from_laplacian
 
 router = APIRouter()
 
@@ -885,6 +886,59 @@ async def process_fourier_filter(
             "filteredImage": f"data:image/png;base64,{base64.b64encode(filtered_buf).decode('utf-8')}",
             "originalSpectrum": f"data:image/png;base64,{base64.b64encode(orig_spectrum_buf).decode('utf-8')}",
             "filteredSpectrum": f"data:image/png;base64,{base64.b64encode(filtered_spectrum_buf).decode('utf-8')}"
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/pyramids")
+async def process_pyramids(
+    image: UploadFile = File(...),
+    levels: int = Form(...)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+
+        # Build pyramids
+        gaussian_pyramid = build_gaussian_pyramid(img, levels)
+        laplacian_pyramid, laplacian_display = build_laplacian_pyramid(gaussian_pyramid)
+        reconstructed = reconstruct_from_laplacian(laplacian_pyramid)
+
+        # Encode all images to base64
+        gaussian_images = []
+        laplacian_images = []
+        
+        for g_img in gaussian_pyramid:
+            _, buf = cv2.imencode('.png', g_img)
+            gaussian_images.append(
+                f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
+            )
+            
+        for l_img in laplacian_display:  # Use display version for frontend
+            _, buf = cv2.imencode('.png', l_img)
+            laplacian_images.append(
+                f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
+            )
+            
+        _, reconstructed_buf = cv2.imencode('.png', reconstructed)
+        
+        return JSONResponse({
+            "gaussianPyramid": gaussian_images,
+            "laplacianPyramid": laplacian_images,
+            "reconstructedImage": f"data:image/png;base64,{base64.b64encode(reconstructed_buf).decode('utf-8')}"
         })
         
     except Exception as e:

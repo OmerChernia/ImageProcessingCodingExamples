@@ -151,6 +151,16 @@ export default function Home() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15v4m0 0v4m0-4h4m-4 0H3m3-3V8m0 0V4m0 4h4m-4 0H3m15 4h-4m4 0v4m0-4h4m-4 0h4m-4 4h4m-4 0v4m0-4h4m-4 0h4" />
         </svg>
       )
+    },
+    { 
+      name: 'Multi-Band Blending',
+      href: '/blending',
+      description: 'Blend images smoothly using Laplacian pyramids',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      )
     }
   ];
 

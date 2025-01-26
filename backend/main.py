@@ -1,20 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers.image_processing import router as image_processing_router
+from routers import image_processing
 
 app = FastAPI()
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend URL
+    allow_origins=["http://localhost:3000"],  # Update with your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include the router at some prefix, e.g. "/api"
-app.include_router(image_processing_router, prefix="/api")
+# Include routers
+app.include_router(image_processing.router)
 
 if __name__ == "__main__":
     import uvicorn

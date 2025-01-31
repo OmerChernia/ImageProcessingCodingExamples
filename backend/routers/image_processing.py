@@ -87,7 +87,7 @@ def compute_histogram_data(image):
         }
     }
 
-@router.post("/brightness")
+@router.post("/image/brightness")
 async def adjust_brightness(image: UploadFile = File(...), value: int = Form(...)):
     try:
         # Read image
@@ -133,7 +133,7 @@ async def adjust_brightness(image: UploadFile = File(...), value: int = Form(...
             content={"error": f"Failed to process image: {str(e)}"}
         )
 
-@router.post("/contrast")
+@router.post("/image/contrast")
 async def process_contrast(image: UploadFile = File(...), factor: float = Form(...)):
     try:
         # Read image
@@ -742,7 +742,7 @@ async def get_mask(type: str, size: int):
             content={"error": f"Failed to get mask: {str(e)}"}
         )
 
-@router.post("/bilateral")
+@router.post("/image/bilateral")
 async def process_bilateral(
     image: UploadFile = File(...),
     d: int = Form(...),

@@ -48,6 +48,8 @@ export default function ContrastPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [processedImageUrl, setProcessedImageUrl] = useState(null);
   const [histogramData, setHistogramData] = useState(null);
+  const [minOut, setMinOut] = useState(0);
+  const [maxOut, setMaxOut] = useState(255);
 
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
@@ -82,7 +84,8 @@ export default function ContrastPage() {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('factor', contrast.toString());
+      formData.append('min_out', minOut);
+      formData.append('max_out', maxOut);
 
       const response = await fetch('http://localhost:8000/api/contrast', {
         method: 'POST',
@@ -119,13 +122,30 @@ export default function ContrastPage() {
     if (!selectedImage) return;
 
     setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+    formData.append('min_out', minOut);
+    formData.append('max_out', maxOut);
+
     try {
-      await handleImageUpload(selectedImage);
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to process image');
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/contrast`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process image');
+        }
+
+        const data = await response.json();
+        setProcessedImageUrl(data.processedImage);
+    } catch (err) {
+        setError(err.message);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 

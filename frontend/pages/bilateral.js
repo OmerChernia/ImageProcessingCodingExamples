@@ -69,7 +69,7 @@ export default function BilateralPage() {
     formData.append('sigma_space', sigmaSpace);
 
     try {
-      const response = await fetch('http://localhost:8000/api/bilateral', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/bilateral`, {
         method: 'POST',
         body: formData,
       });

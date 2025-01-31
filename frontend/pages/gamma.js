@@ -76,48 +76,34 @@ export default function GammaPage() {
     }
   };
 
-  const handleImageUpload = async (file) => {
-    setError(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedImage) return;
+
     setLoading(true);
-    
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+    formData.append('gamma', gamma);
+
     try {
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('gamma', gamma.toString());
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/gamma`, {
+            method: 'POST',
+            body: formData,
+        });
 
-      const response = await fetch('http://localhost:8000/api/gamma', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process image');
-      }
-
-      const data = await response.json();
-      setProcessedImageUrl(data.processedImage);
-      setHistogramData({
-        original: {
-          histogram: data.originalHistogram,
-          cumulative: data.originalCumulative
-        },
-        processed: {
-          histogram: data.processedHistogram,
-          cumulative: data.processedCumulative
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process image');
         }
-      });
-    } catch (err) {
-      setError(err.message);
-      console.error('Error:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleSubmit = () => {
-    if (selectedImage) {
-      handleImageUpload(selectedImage);
+        const data = await response.json();
+        setProcessedImageUrl(data.processedImage);
+    } catch (err) {
+        setError(err.message);
+    } finally {
+        setLoading(false);
     }
   };
 

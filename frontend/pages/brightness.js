@@ -118,7 +118,32 @@ export default function BrightnessPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedImage) return;
-    await handleImageUpload(selectedImage);
+
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+    formData.append('value', brightness.toString());
+
+    try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/brightness`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process image');
+        }
+
+        const data = await response.json();
+        setProcessedImageUrl(data.processedImage);
+    } catch (err) {
+        setError(err.message);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleDownload = () => {

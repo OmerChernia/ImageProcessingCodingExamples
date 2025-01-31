@@ -44,6 +44,8 @@ export default function FiltersPage() {
   const [filterSequence, setFilterSequence] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [kernelSize, setKernelSize] = useState(3);
+  const [filterType, setFilterType] = useState('min');
 
   const handleImageSelect = async (e) => {
     const file = e.target.files[0];
@@ -88,41 +90,33 @@ export default function FiltersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedImage || filterSequence.length === 0) return;
+    if (!selectedImage) return;
 
     setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
+    formData.append('image', selectedImage);
+    formData.append('kernel_size', kernelSize);
+    formData.append('filter_type', filterType);
+
     try {
-      const formData = new FormData();
-      formData.append('image', selectedImage);
-      formData.append('filter_sequence', filterSequence.join(','));
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/filters`, {
+            method: 'POST',
+            body: formData,
+        });
 
-      const response = await fetch('http://localhost:8000/api/apply-filter', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process image');
-      }
-
-      const data = await response.json();
-      setProcessedImageUrl(data.processedImage);
-      setHistogramData({
-        original: {
-          histogram: data.originalHistogram,
-          cumulative: data.originalCumulative
-        },
-        processed: {
-          histogram: data.processedHistogram,
-          cumulative: data.processedCumulative
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process image');
         }
-      });
-    } catch (error) {
-      setError(error.message);
-      console.error('Error:', error);
+
+        const data = await response.json();
+        setProcessedImageUrl(data.processedImage);
+    } catch (err) {
+        setError(err.message);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 

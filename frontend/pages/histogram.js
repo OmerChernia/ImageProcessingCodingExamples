@@ -124,6 +124,7 @@ export default function HistogramPage() {
     formData.append('image', selectedImage);
 
     try {
+        console.log('Sending request to:', `${process.env.NEXT_PUBLIC_API_URL}/image/histogram`);
         const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/image/histogram`, {
             method: 'POST',
             body: formData,
@@ -135,9 +136,11 @@ export default function HistogramPage() {
         }
 
         const data = await response.json();
+        console.log('Received data:', data);
         setProcessedImageUrl(data.processedImage);
         setHistogramData(data.histogramData);
     } catch (err) {
+        console.error('Error:', err);
         setError(err.message);
     } finally {
         setLoading(false);

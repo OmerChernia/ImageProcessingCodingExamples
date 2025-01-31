@@ -1,5 +1,8 @@
-opencv-python
-numpy
-matplotlib
 fastapi
 uvicorn
+python-multipart
+numpy
+opencv-python-headless
+matplotlib
+pillow
+python-jose[cryptography]

@@ -14,6 +14,7 @@ def apply_fourier_filter(image, filter_type, params):
             - radius: for low/high pass
             - inner_radius, outer_radius: for band pass
             - gaussian: boolean for gaussian smoothing
+            - add_dc: boolean for adding 128 to result
     """
     # Apply FFT
     f_transform = np.fft.fft2(image)
@@ -53,7 +54,13 @@ def apply_fourier_filter(image, filter_type, params):
     f_shift_filtered = f_shift * mask
     f_inverse = np.fft.ifftshift(f_shift_filtered)
     img_back = np.fft.ifft2(f_inverse)
-    img_filtered = np.abs(img_back).astype(np.uint8)
+    img_filtered = np.abs(img_back)
+    
+    # Add DC component (128) if requested
+    if params.get('add_dc', False):
+        img_filtered += 128
+        
+    img_filtered = np.clip(img_filtered, 0, 255).astype(np.uint8)
     
     # Prepare magnitude spectrum for visualization
     magnitude_spectrum = 20 * np.log(np.abs(f_shift) + 1)

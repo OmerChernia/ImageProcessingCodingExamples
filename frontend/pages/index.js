@@ -151,6 +151,16 @@ export default function Home() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15v4m0 0v4m0-4h4m-4 0H3m3-3V8m0 0V4m0 4h4m-4 0H3m15 4h-4m4 0v4m0-4h4m-4 0h4m-4 4h4m-4 0v4m0-4h4m-4 0h4" />
         </svg>
       )
+    },
+    { 
+      name: 'Canny Edge Detection',
+      href: '/canny',
+      description: 'Detect edges in images using the Canny algorithm',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+        </svg>
+      )
     }
   ];
 

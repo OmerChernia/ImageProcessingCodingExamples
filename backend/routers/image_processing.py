@@ -27,6 +27,7 @@ import json
 from scripts.fourier_transform import apply_fourier_transform
 from scripts.fourier_filters import apply_fourier_filter  # Add this import at the top
 from scripts.pyramids import build_gaussian_pyramid, build_laplacian_pyramid, reconstruct_from_laplacian
+from scripts.canny_edge import apply_canny_edge
 
 router = APIRouter()
 
@@ -848,7 +849,8 @@ async def process_fourier_filter(
     gaussian: bool = Form(...),
     radius: int = Form(None),
     inner_radius: int = Form(None),
-    outer_radius: int = Form(None)
+    outer_radius: int = Form(None),
+    add_dc: bool = Form(False)
 ):
     try:
         # Read image
@@ -863,7 +865,10 @@ async def process_fourier_filter(
             )
 
         # Prepare parameters
-        params = {'gaussian': gaussian}
+        params = {
+            'gaussian': gaussian,
+            'add_dc': add_dc
+        }
         if filter_type == 'band_pass':
             params.update({
                 'inner_radius': inner_radius,
@@ -939,6 +944,43 @@ async def process_pyramids(
             "gaussianPyramid": gaussian_images,
             "laplacianPyramid": laplacian_images,
             "reconstructedImage": f"data:image/png;base64,{base64.b64encode(reconstructed_buf).decode('utf-8')}"
+        })
+        
+    except Exception as e:
+        print(f"Error processing image: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"Failed to process image: {str(e)}"}
+        )
+
+@router.post("/canny-edge")
+async def process_canny_edge(
+    image: UploadFile = File(...),
+    low_threshold: int = Form(...),
+    high_threshold: int = Form(...),
+    sigma: float = Form(...)
+):
+    try:
+        # Read image
+        contents = await image.read()
+        nparr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+        
+        if img is None:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Invalid image file"}
+            )
+            
+        # Apply edge detection
+        edges = apply_canny_edge(img, low_threshold, high_threshold, sigma)
+        
+        # Encode result to base64
+        _, img_encoded = cv2.imencode('.png', edges)
+        edge_base64 = base64.b64encode(img_encoded).decode('utf-8')
+        
+        return JSONResponse({
+            "processedImage": f"data:image/png;base64,{edge_base64}"
         })
         
     except Exception as e:

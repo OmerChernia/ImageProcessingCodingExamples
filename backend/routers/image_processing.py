@@ -27,7 +27,6 @@ import json
 from scripts.fourier_transform import apply_fourier_transform
 from scripts.fourier_filters import apply_fourier_filter  # Add this import at the top
 from scripts.pyramids import build_gaussian_pyramid, build_laplacian_pyramid, reconstruct_from_laplacian
-from scripts.blending import multi_band_blending
 
 router = APIRouter(
     prefix="/image",  # Make sure this matches your frontend URL
@@ -852,7 +851,8 @@ async def process_fourier_filter(
     gaussian: bool = Form(...),
     radius: int = Form(None),
     inner_radius: int = Form(None),
-    outer_radius: int = Form(None)
+    outer_radius: int = Form(None),
+    add_dc: bool = Form(False)
 ):
     try:
         # Read image
@@ -867,7 +867,10 @@ async def process_fourier_filter(
             )
 
         # Prepare parameters
-        params = {'gaussian': gaussian}
+        params = {
+            'gaussian': gaussian,
+            'add_dc': add_dc
+        }
         if filter_type == 'band_pass':
             params.update({
                 'inner_radius': inner_radius,
@@ -950,132 +953,6 @@ async def process_pyramids(
         return JSONResponse(
             status_code=500,
             content={"error": f"Failed to process image: {str(e)}"}
-        )
-
-@router.post("/blend")
-async def process_blending(
-    image1: UploadFile = File(...),
-    image2: UploadFile = File(...),
-    levels: int = Form(...),
-    blend_position: float = Form(...),
-    blend_type: str = Form(default="full")
-):
-    try:
-        print(f"Received request at /image/blend")
-        print(f"Parameters: levels={levels}, blend_position={blend_position}, blend_type={blend_type}")
-
-        # Validate parameters
-        if not isinstance(levels, int):
-            try:
-                levels = int(levels)
-            except ValueError:
-                raise HTTPException(status_code=422, detail="Levels must be an integer")
-
-        if not isinstance(blend_position, float):
-            try:
-                blend_position = float(blend_position)
-            except ValueError:
-                raise HTTPException(status_code=422, detail="Blend position must be a float")
-
-        if not (2 <= levels <= 10):
-            raise HTTPException(status_code=422, detail=f"Levels must be between 2 and 10, got {levels}")
-            
-        if not (0 <= blend_position <= 1):
-            raise HTTPException(status_code=422, detail=f"Blend position must be between 0 and 1, got {blend_position}")
-
-        if blend_type not in ["full", "half"]:
-            raise HTTPException(status_code=422, detail=f"Invalid blend type. Must be 'full' or 'half', got {blend_type}")
-
-        # Check file types
-        allowed_types = ['image/jpeg', 'image/png', 'image/jpg']
-        if image1.content_type not in allowed_types or image2.content_type not in allowed_types:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Only JPEG and PNG images are supported"}
-            )
-
-        # Read first image
-        try:
-            contents1 = await image1.read()
-            nparr1 = np.frombuffer(contents1, np.uint8)
-            img1 = cv2.imdecode(nparr1, cv2.IMREAD_GRAYSCALE)
-            print(f"Image 1 shape: {img1.shape if img1 is not None else 'None'}")
-        except Exception as e:
-            print(f"Error reading image 1: {str(e)}")
-            return JSONResponse(
-                status_code=400,
-                content={"error": f"Failed to read first image: {str(e)}"}
-            )
-        
-        # Read second image
-        try:
-            contents2 = await image2.read()
-            nparr2 = np.frombuffer(contents2, np.uint8)
-            img2 = cv2.imdecode(nparr2, cv2.IMREAD_GRAYSCALE)
-            print(f"Image 2 shape: {img2.shape if img2 is not None else 'None'}")
-        except Exception as e:
-            print(f"Error reading image 2: {str(e)}")
-            return JSONResponse(
-                status_code=400,
-                content={"error": f"Failed to read second image: {str(e)}"}
-            )
-
-        # Validate images
-        if img1 is None:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "First image is invalid or corrupted"}
-            )
-        
-        if img2 is None:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Second image is invalid or corrupted"}
-            )
-            
-        if img1.shape != img2.shape:
-            return JSONResponse(
-                status_code=400,
-                content={"error": f"Images must be the same size. Got {img1.shape} and {img2.shape}"}
-            )
-
-        # Rest of the code remains the same...
-        print(f"Processing with levels={levels}, blend_position={blend_position}")
-        
-        result = multi_band_blending(
-            img1, 
-            img2, 
-            levels, 
-            blend_position,
-            blend_type
-        )
-        print("Blending completed successfully")
-        
-        # Convert all images to base64
-        def encode_images(images):
-            return [
-                f"data:image/png;base64,{base64.b64encode(cv2.imencode('.png', img)[1]).decode('utf-8')}"
-                for img in images
-            ]
-        
-        response_data = {
-            "pyramid1": encode_images(result['pyramid1']),
-            "pyramid2": encode_images(result['pyramid2']),
-            "blendedPyramid": encode_images(result['blended_pyramid']),
-            "maskPyramid": encode_images(result['mask_pyramid']),
-            "result": f"data:image/png;base64,{base64.b64encode(cv2.imencode('.png', result['result'])[1]).decode('utf-8')}"
-        }
-        print("Response data prepared successfully")
-        return JSONResponse(response_data)
-        
-    except Exception as e:
-        print(f"Error in process_blending: {str(e)}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Failed to process images: {str(e)}"}
         )
 
 # Add similar endpoints for other operations...

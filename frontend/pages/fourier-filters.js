@@ -42,6 +42,7 @@ export default function FourierFiltersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [processedData, setProcessedData] = useState(null);
+  const [addDC, setAddDC] = useState(false);
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -62,6 +63,7 @@ export default function FourierFiltersPage() {
     formData.append('image', selectedImage);
     formData.append('filter_type', filterType);
     formData.append('gaussian', useGaussian);
+    formData.append('add_dc', addDC);
 
     if (filterType === 'band_pass') {
       formData.append('inner_radius', innerRadius);
@@ -201,6 +203,19 @@ export default function FourierFiltersPage() {
                   />
                   <label htmlFor="gaussian" className="ml-2 block text-sm text-gray-900">
                     Use Gaussian Smoothing
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="addDC"
+                    checked={addDC}
+                    onChange={(e) => setAddDC(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="addDC" className="ml-2 block text-sm text-gray-900">
+                    Add DC Component (128)
                   </label>
                 </div>
 

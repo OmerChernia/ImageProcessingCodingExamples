@@ -13,19 +13,23 @@ def apply_canny_edge(image, low_threshold, high_threshold, sigma):
         high_threshold: higher threshold for edge detection
         sigma: standard deviation for Gaussian blur
     """
-    # Convert to float for proper processing
-    img_float = image.astype(float)
-    
-    # Apply Gaussian blur
-    kernel_size = int(2 * round(3 * sigma) + 1)  # Ensure odd kernel size
-    blurred = cv2.GaussianBlur(img_float, (kernel_size, kernel_size), sigma)
-    
-    # Apply Canny edge detection
-    edges = cv2.Canny(blurred.astype(np.uint8), 
-                     low_threshold, 
-                     high_threshold)
-    
-    return edges
+    try:
+        # Convert to float for proper processing
+        img_float = image.astype(float)
+        
+        # Apply Gaussian blur
+        kernel_size = int(2 * round(3 * sigma) + 1)  # Ensure odd kernel size
+        blurred = cv2.GaussianBlur(img_float, (kernel_size, kernel_size), sigma)
+        
+        # Apply Canny edge detection
+        edges = cv2.Canny(blurred.astype(np.uint8), 
+                         low_threshold, 
+                         high_threshold)
+        
+        return edges
+    except Exception as e:
+        print(f"Error in apply_canny_edge: {str(e)}")
+        raise
 
 def plot_analysis(image_path, low_threshold, high_threshold, sigma):
     """Plot analysis of the image before and after edge detection."""

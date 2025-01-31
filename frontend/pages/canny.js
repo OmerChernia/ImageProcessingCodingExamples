@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
+// עדכן את ה-URL לפי הקונפיגורציה שלך
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function CannyPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -33,7 +36,7 @@ export default function CannyPage() {
     formData.append('sigma', sigma.toString());
 
     try {
-      const response = await fetch('http://localhost:8000/api/canny-edge', {
+      const response = await fetch(`${API_URL}/image/canny-edge`, {
         method: 'POST',
         body: formData,
       });

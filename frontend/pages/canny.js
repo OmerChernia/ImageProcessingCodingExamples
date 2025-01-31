@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 
 // עדכן את ה-URL לפי הקונפיגורציה שלך
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://imageprocessingexamples.netlify.app';
 
 export default function CannyPage() {
   const [selectedImage, setSelectedImage] = useState(null);
